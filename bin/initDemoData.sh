@@ -218,7 +218,7 @@ if [ "$GOGS_ROUTE_NAME" != "" ]; then
         echo
         git clone http://${GOGS_HOSTNAME}/${GOGSUSER}/travel-insurance-rules.git 
         cd travel-insurance-rules
-        sed -i -e 's/def projectNamePrefix = ""/def projectNamePrefix = "gck-"/g' ./Jenkinsfile
+        sed -i -e "s/def projectNamePrefix = \"\"/def projectNamePrefix = \"${PROJ_NAME_PREFIX}\"/g" ./Jenkinsfile
         echo "---> Push bare codes as mirror to gogs ..."
         git add .
         git commit -m "Updated Jenkinsfile"
