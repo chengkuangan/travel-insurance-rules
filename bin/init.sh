@@ -1,34 +1,51 @@
 #!/bin/bash
 
+#================== TO DO ==============================
+# 1. keytool will prompt for password, how to overcome this?
+# 2. Configure the git repo for Decision Central
+
+
 #================== Global Variables  ==================
 
-PROJ_NAME_PREFIX='gck'
-PROJ_TOOLS_NAME="$PROJ_NAME_PREFIX-tools"
-PROJ_DM_NAME="$PROJ_NAME_PREFIX-dm"
+PROJ_NAME_PREFIX='gck-'
+PROJ_TOOLS_NAME="tools"
+PROJ_TOOLS_DESC="Tools"
+PROJ_DM_DEV_NAME="rhdm-dev"
+PROJ_DM_DEV_DESC="RH DM DEV"
+PROJ_DM_SIT_NAME="rhdm-sit"
+PROJ_DM_SIT_DESC="RH DM SIT"
 USERNAME=""
 PASSWORD=""
 MASTER_NODE_URL=""
-HOSTNAME=""
-GITHUB_USERNAME=""
-GITHIB_PASSWORD=""
+LOGOUT_WHEN_DONE="false"
+DM_IMAGE_STREAM_TAG="1.1"
+KIESERVER_KEYSTORE_PASSWORD="mykeystorepass"
+# DCENTER_KEYSTORE_PASSWORD="mykeystorepass"
 
 #================== Functions ==================
 
 function printCmdUsage(){
     echo
-    echo "Command Usage: init.sh -url <OCP Master URL> -u <username> -p <password> -hostname <hostname>"
+    echo "Command Usage: ./init.sh -url <OCP Master URL> -u <username> -p <password>"
     echo
-    echo "-url  OCP Master URL"
-    echo "-u  OCP Username"
-    echo "-p  OCP Password"
-    echo "-hostname  OCP domain name, e.g. apps.ocp.demo.com"
+    echo "-url                Required. OCP Master URL."
+    echo "-u                  Required. OCP Username."
+    echo "-p                  Required. OCP Password"
+    echo "-nf                 Optional. Default: $PROJ_NAME_PREFIX. To prefix a project name to create unique project name in shared environment."
+    echo "-tn                 Optional. Default: ${PROJ_NAME_PREFIX}$PROJ_TOOLS_NAME. OCP Project name to group CI/CD containers such as gogs, jenkins, etc..."
+    echo "-td                 Optional. Default: $PROJ_TOOLS_DESC. OCP Project description for ${PROJ_NAME_PREFIX}$PROJ_TOOLS_NAME"
+    echo "-dsn                Optional. Default: ${PROJ_NAME_PREFIX}$PROJ_DM_SIT_NAME. OCP project name for RH Decision Manager in SIT Environment"
+    echo "-dsd                Optional. Default: $PROJ_DM_SIT_DESC. OCP Project description for ${PROJ_NAME_PREFIX}$PROJ_DM_SIT_NAME"
+    echo "-ddn                Optional. Default: ${PROJ_NAME_PREFIX}$PROJ_DM_DEV_NAME. OCP project name for RH Decision Manager in DEV Environment"
+    echo "-ddd                Optional. Default: $PROJ_DM_DEV_DESC. OCP Project description for ${PROJ_NAME_PREFIX}$PROJ_DM_DEV_NAME"
+    echo "-iv                 Optional. Defalut: $DM_IMAGE_STREAM_TAG. Decision Manager and Decision Central image stream version to deploy."
+    echo "-logout             Optional. Default: $LOGOUT_WHEN_DONE. Set to true to logout oc connection after the completion."
     echo
 }
 
 function printUsage(){
     echo
-    echo "This command initialize a CI/CD demo in OpenShift based on Parskmap demo codes."
-    echo "It has been tested in OpenShift 3.5"
+    echo "This command will deploy a working demo for Red Hat Decision Manager, completed with CI/CD process."
     echo
     printCmdUsage
     echo
@@ -40,19 +57,44 @@ function printUsage(){
 
 function printImportantNoteBeforeExecute(){
     echo
-    echo
 }
 
 function printAdditionalRemarks(){
     echo
-    echo "================================ Additional Manual Steps Required ================================"
+    echo "================================ Post-Deployment Steps ================================"
+    echo
+    echo "Please perform the following steps to complete the demo setup:"
+    echo
+    echo "Gogs Sample Source Codes"
+    echo "1. After the gogs POD is ready. Access to the console and register a new user."
+    echo 
+    echo "Jenkins Pre-Req Configuration"
+    echo "1. Go to the Jenkins console and register a new user."
+    echo "2. Login Jenkins with the new user. On the right upper site of the top menu, click beside the username to bring up the drop-down menu. Choose Configure on "
+    echo "   the drop-down menu."
+    echo "3. Add a new Token under the API Token section. Keep note of this token, this token will be used through out the setup process. Click Save to proceed." 
+    echo 
+    echo "Configure and loading demo data into the demo environment."
+    echo "1. Run the provided initDemoData.sh to configure Gogs and Jenkins with the username and token created in the previous steps."
+    echo "   This script will create all the necessary sample codes and projects in Jenkins and Gogs. It also populate the Nexus with necessary repos."
     echo
 }
 
 function printVariables(){
     echo
-    echo "The following information will be used to create the demo:"
-    echo
+    echo "The following parameters will be used to create the demo:"
+    echo "Project Name Prefix: $PROJ_NAME_PREFIX"
+    echo "Tools Project Name: $PROJ_TOOLS_NAME"
+    echo "Tools Project Description: $PROJ_TOOLS_DESC"
+    echo "RH DM SIT Project Name: $PROJ_DM_SIT_NAME"
+    echo "RH DM SIT Project Description: $PROJ_DM_SIT_DESC"
+    echo "RH DM DEV Project Name: $PROJ_DM_DEV_NAME"
+    echo "RH DM DEV Project Description: $PROJ_DM_DEV_DESC"
+    echo "Username: $USERNAME"
+    echo "Password: *******"
+    echo "Master Node URL: $MASTER_NODE_URL"
+    echo "Decision Manager Image Stream version: $DM_IMAGE_STREAM_TAG"
+    echo "Logout oc after completion: $LOGOUT_WHEN_DONE"
     echo
 }
 
@@ -67,7 +109,7 @@ function processArguments(){
       if [ "$1" == "-h" ]; then
         printUsage
         exit 0
-      elif [ "$1" == "-project-name-prefix" ]; then
+      elif [ "$1" == "-nf" ]; then
         shift
         PROJ_NAME_PREFIX="$1"
       elif [ "$1" == "-u" ]; then
@@ -79,15 +121,30 @@ function processArguments(){
       elif [ "$1" == "-url" ]; then
         shift
         MASTER_NODE_URL="$1"
-      elif [ "$1" == "-hostname" ]; then
+      elif [ "$1" == "-logout" ]; then
         shift
-        HOSTNAME="$1"  
-      elif [ "$1" == "-github-username" ]; then
+        LOGOUT_WHEN_DONE="$1"    
+      elif [ "$1" == "-tn" ]; then
         shift
-        GITHUB_USERNAME="$1"    
-      elif [ "$1" == "-github-password" ]; then
+        PROJ_TOOLS_NAME="$1"      
+      elif [ "$1" == "-dsn" ]; then
         shift
-        GITHUB_PASSWORD="$1"      
+        PROJ_DM_SIT_NAME="$1"      
+      elif [ "$1" == "-dsd" ]; then
+        shift
+        PROJ_DM_SIT_DESC="$1"        
+      elif [ "$1" == "-ddn" ]; then
+        shift
+        PROJ_DM_DEV_NAME="$1"      
+      elif [ "$1" == "-ddd" ]; then
+        shift
+        PROJ_DM_DEV_DESC="$1"          
+      elif [ "$1" == "-td" ]; then
+        shift
+        PROJ_TOOLS_DESC="$1"      
+      elif [ "$1" == "-iv" ]; then
+        shift
+        DM_IMAGE_STREAM_TAG="$1"  
       else
         echo "Unknown argument: $1"
         printCmdUsage
@@ -96,9 +153,19 @@ function processArguments(){
       shift
     done
 
+    PROJ_TOOLS_NAME=${PROJ_NAME_PREFIX}${PROJ_TOOLS_NAME}
+    PROJ_DM_DEV_NAME=${PROJ_NAME_PREFIX}${PROJ_DM_DEV_NAME}
+    PROJ_DM_SIT_NAME=${PROJ_NAME_PREFIX}${PROJ_DM_SIT_NAME}
+
     if [ "$MASTER_NODE_URL" = "" ]; then
         echo "Missing -url argument. Master node URL is required."
         exit 0
+    elif [ "$USERNAME" = "" ]; then
+        echo "Missing -u argument. OCP username is required."
+        exit 0    
+    elif [ "$PASSWORD" = "" ]; then
+        echo "Missing -p argument. OCP password is required."
+        exit 0        
     fi
 
 }
@@ -118,6 +185,37 @@ read bc
 
 oc login -u $USERNAME -p $PASSWORD $MASTER_NODE_URL
 
+#================== Check if image streams are available ==================
+
+echo
+echo "---> Checking if rhdm73-decisioncentral-openshift:$DM_IMAGE_STREAM_TAG imagestream is available..."
+IS_IMAGE_AVAILABLE="$(oc get imagestreamtag -n openshift | grep rhdm73-decisioncentral-openshift:$DM_IMAGE_STREAM_TAG)"
+echo
+if [ "$IS_IMAGE_AVAILABLE" = "" ]; then
+  echo "---> Image 'rhdm73-decisioncentral-openshift:$DM_IMAGE_STREAM_TAG' is not available in the OCP. You can..."
+  echo "     Run the following command to find out whether there is another version available. If yes, you may change the version in the rhdm73-autoring.yaml from "
+  echo "     version $DM_IMAGE_STREAM_TAG to the available version, by changing this parameter (DM_IMAGE_STREAM_TAG) in this file at the top."
+  echo "            oc get imagestreamtag -n openshift | grep rhdm73-decisioncentral-openshift:$DM_IMAGE_STREAM_TAG"
+  echo
+  echo "     OR you can following the guide here to activate registry service account:"
+  echo "     https://access.redhat.com/documentation/en-us/red_hat_decision_manager/7.3/html/deploying_a_red_hat_decision_manager_authoring_or_managed_server_environment_on_red_hat_openshift_container_platform/dm-openshift-prepare-con#imagestreams-file-install-proc "
+  exit 0
+fi
+echo
+echo "---> Checking if rhdm73-kieserver-openshift:$DM_IMAGE_STREAM_TAG imagestream is available..."
+IS_IMAGE_AVAILABLE="$(oc get imagestreamtag -n openshift | grep rhdm73-kieserver-openshift:$DM_IMAGE_STREAM_TAG)"
+echo
+if [ "$IS_IMAGE_AVAILABLE" = "" ]; then
+  echo "---> Image 'rhdm73-kieserver-openshift:$DM_IMAGE_STREAM_TAG' is not available in the OCP. You can..."
+  echo "     Run the following command to find out whether there is another version available. If yes, you may change the version in the rhdm73-autoring.yaml from "
+  echo "     version DM_IMAGE_STREAM_TAG to the available version, by changing this parameter (DM_IMAGE_STREAM_TAG) in this file at the top"
+  echo "            oc get imagestreamtag -n openshift | grep rhdm73-decisioncentral-openshift:$DM_IMAGE_STREAM_TAG"
+  echo
+  echo "     OR you can following the guide here to activate registry service account:"
+  echo "     https://access.redhat.com/documentation/en-us/red_hat_decision_manager/7.3/html/deploying_a_red_hat_decision_manager_authoring_or_managed_server_environment_on_red_hat_openshift_container_platform/dm-openshift-prepare-con#imagestreams-file-install-proc "
+  exit 0
+fi 
+
 #================== Delete Projects if Found ==================
 
 #================== Create projects required with neccessary permissions ==================
@@ -126,16 +224,28 @@ echo
 echo "---> Creating all required projects now..."
 echo
 
-oc new-project $PROJ_TOOLS_NAME --display-name="Tools"
-oc new-project $PROJ_DM_NAME --display-name="Decision Manager"
+oc new-project $PROJ_TOOLS_NAME --display-name="$PROJ_TOOLS_DESC"
+oc new-project $PROJ_DM_SIT_NAME --display-name="$PROJ_DM_SIT_DESC"
+oc new-project $PROJ_DM_DEV_NAME --display-name="$PROJ_DM_DEV_DESC"
 
 
 echo
 echo "---> Adding all necessary users and system accounts permissions..."
 echo
 
-oc policy add-role-to-user edit system:serviceaccount:$PROJ_TOOLS_NAME:jenkins -n $PROJ_DM_NAME
-oc policy add-role-to-user system:image-puller system:serviceaccount:$PROJ_DM_NAME:default -n $PROJ_DM_NAME
+oc create role RoleBindingRbacCreate --verb=create --resource=rolebindings.rbac.authorization.k8s.io -n $PROJ_DM_SIT_NAME
+oc create role RoleBindingCreate --verb=create --resource=rolebindings.authorization.openshift.io -n $PROJ_DM_SIT_NAME
+oc create role RoleBindingRbacCreate --verb=create --resource=rolebindings.rbac.authorization.k8s.io -n $PROJ_DM_DEV_NAME
+oc create role RoleBindingCreate --verb=create --resource=rolebindings.authorization.openshift.io -n $PROJ_DM_DEV_NAME
+
+oc policy add-role-to-user edit system:serviceaccount:$PROJ_TOOLS_NAME:jenkins -n $PROJ_DM_SIT_NAME
+oc policy add-role-to-user edit system:serviceaccount:$PROJ_TOOLS_NAME:jenkins -n $PROJ_DM_DEV_NAME
+oc adm policy add-role-to-user RoleBindingRbacCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_SIT_NAME -n $PROJ_DM_SIT_NAME
+oc adm policy add-role-to-user RoleBindingCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_SIT_NAME -n $PROJ_DM_SIT_NAME
+oc adm policy add-role-to-user RoleBindingRbacCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_DEV_NAME -n $PROJ_DM_DEV_NAME
+oc adm policy add-role-to-user RoleBindingCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_DEV_NAME -n $PROJ_DM_DEV_NAME
+
+#oc policy add-role-to-user system:image-puller system:serviceaccount:$PROJ_DM_NAME:default -n $PROJ_DM_NAME
     
 #================== Deploy Gogs ==================
 
@@ -143,13 +253,7 @@ oc policy add-role-to-user system:image-puller system:serviceaccount:$PROJ_DM_NA
 echo
 echo "---> Provisioning gogs now..."
 echo
-oc new-app -f https://raw.githubusercontent.com/chengkuangan/templates/master/gogs-persistent-template.yaml -p SKIP_TLS_VERIFY=true -p HOSTNAME=$HOSTNAME -p PROJECT_NAME=$PROJ_TOOLS_NAME -n $PROJ_TOOLS_NAME 
-
-echo
-echo "---> Populating sample codes into gogs now..."
-echo
-
-#curl -o /tmp/initGogs.sh -s https://raw.githubusercontent.com/chengkuangan/scripts/master/initGogs.sh; source initGogs.sh -su $GITHUB_USERNAME -sp $GITHIB_PASSWORD -proj 4 -surl https://github.com/chengkuangan/gobear.git -tu $USERNAME -tp $PASSWORD
+oc new-app -f https://raw.githubusercontent.com/chengkuangan/templates/master/gogs-persistent-template.yaml -p SKIP_TLS_VERIFY=true -n $PROJ_TOOLS_NAME 
 
 #================== Deploy Nexus3 ==================
 
@@ -161,18 +265,29 @@ oc new-app -f https://raw.githubusercontent.com/chengkuangan/templates/master/ne
 
 #================== Deploy Jenkins ==================
 
-#echo
-#echo "---> Provisioning Jenkins now..."
-#echo
-#oc new-app jenkins-persistent -n $PROJ_TOOLS_NAME
+echo
+echo "---> Provisioning Jenkins now..."
+echo
+oc new-app jenkins-persistent -n $PROJ_TOOLS_NAME
 
-### Required Manual Steps
-#
-# 1. Login gogs
-# 2. Create New Items for each of the build required for nationalparks, parksmap-web and mlbparks
-# 3. Make sure to add user.name and user.email in the task config else error will occurs.
-#
-##
+#================== Deploy Decision Central and Decision Servers into Dev Environment ==================
+
+echo
+echo "---> Generating keystore.jks ..."
+echo
+#keytool -genkeypair -alias jboss -keyalg RSA -keystore ./dev_keystore.jks -storepass mykeystorepasss --dname 'CN=demo1,OU=Demo,O=ocp.demo.com,L=KL,S=KL,C=MY'
+keytool -genkeypair -alias jboss -keyalg RSA -keystore ./keystore.jks -storepass $KIESERVER_KEYSTORE_PASSWORD --dname 'CN=demo1,OU=Demo,O=ocp.demo.com,L=KL,S=KL,C=MY'
+echo
+echo "---> Creating kieserver-app-secret..."
+echo
+#oc create secret generic kieserver-app-secret --from-file=./dev_keystore.jks -n $PROJ_DM_DEV_NAME
+#oc create secret generic decisioncentral-app-secret --from-file=./dev_keystore.jks -n $PROJ_DM_DEV_NAME
+oc create secret generic kieserver-app-secret --from-file=./keystore.jks -n $PROJ_DM_DEV_NAME
+oc create secret generic decisioncentral-app-secret --from-file=./keystore.jks -n $PROJ_DM_DEV_NAME
+echo
+echo "---> Deploying Decision Central and Decision Server into DEV $PROJ_DM_DEV_NAME..."
+echo
+oc new-app -f ../templates/rhdm73-authoring.yaml -p DECISION_CENTRAL_HTTPS_SECRET=decisioncentral-app-secret -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p DECISION_CENTRAL_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p KIE_SERVER_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p APPLICATION_NAME=dmanager -n $PROJ_DM_DEV_NAME -p IMAGE_STREAM_TAG=$DM_IMAGE_STREAM_TAG
 
 #================== Other Settings ==================
 
@@ -184,7 +299,7 @@ printAdditionalRemarks
 
 echo
 echo "==============================================================="
-echo "Well, the demo should have been deployed and configured now... "
+echo "If you see this, it means the process is completed successfully."
 echo "==============================================================="
 echo
 
