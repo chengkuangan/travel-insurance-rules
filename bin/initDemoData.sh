@@ -136,7 +136,7 @@ function processArguments(){
       elif [ "$1" == "-e" ]; then
         shift
         GOGSEMAIL="$1"  
-      elif [ "$1" == "-dc" ]; then
+      elif [ "$1" == "-nc" ]; then
         shift
         DECISIONCENTRAL_PROJECTNAME="$1"    
       else

@@ -69,8 +69,8 @@ function printAdditionalRemarks(){
     echo "1. After the gogs POD is ready. Access to the console and register a new user."
     echo 
     echo "Jenkins Pre-Req Configuration"
-    echo "1. Go to the Jenkins console and register a new user."
-    echo "2. Login Jenkins with the new user. On the right upper site of the top menu, click beside the username to bring up the drop-down menu. Choose Configure on "
+    echo "1. Go to the Jenkins console and login with the username and password used to sign on OpenShift."
+    echo "2. On the right upper site of the top menu, click beside the username to bring up the drop-down menu. Choose Configure on "
     echo "   the drop-down menu."
     echo "3. Add a new Token under the API Token section. Keep note of this token, this token will be used through out the setup process. Click Save to proceed." 
     echo 
