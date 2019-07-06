@@ -271,6 +271,7 @@ fi
 
 #================== Patching Decision Central ==================
 
+echo
 echo "---> Checking if Decision Central POD is ready..."
 echo
 DC_POD_NAME="$(oc get pods --no-headers -o custom-columns=NAME:.metadata.name -n $DECISIONCENTRAL_PROJECTNAME | grep rhdmcentr )"
