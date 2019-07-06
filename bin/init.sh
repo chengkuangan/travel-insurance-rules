@@ -255,6 +255,7 @@ echo "---> Provisioning gogs now..."
 echo
 oc new-app -f https://raw.githubusercontent.com/chengkuangan/templates/master/gogs-persistent-template.yaml -p SKIP_TLS_VERIFY=true -n $PROJ_TOOLS_NAME 
 
+
 #================== Deploy Nexus3 ==================
 
 echo
@@ -288,6 +289,10 @@ echo
 echo "---> Deploying Decision Central and Decision Server into DEV $PROJ_DM_DEV_NAME..."
 echo
 oc new-app -f ../templates/rhdm73-authoring.yaml -p DECISION_CENTRAL_HTTPS_SECRET=decisioncentral-app-secret -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p DECISION_CENTRAL_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p KIE_SERVER_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p APPLICATION_NAME=dmanager -n $PROJ_DM_DEV_NAME -p IMAGE_STREAM_TAG=$DM_IMAGE_STREAM_TAG
+
+# --- Patching Decision Central
+
+
 
 #================== Other Settings ==================
 

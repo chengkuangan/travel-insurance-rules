@@ -7,8 +7,10 @@
 #================== Global Variables  ==================
 
 PROJECTNAME=""
+DECISIONCENTRAL_PROJECTNAME=""
 GOGSUSER=""
 GOGSPASSWORD=""
+GOGSEMAIL=""
 USERNAME=""
 PASSWORD=""
 MASTER_NODE_URL=""
@@ -17,6 +19,7 @@ DOMAIN_NAME=""
 JENKINS_USERNAME=""
 JENKINS_TOKEN=""
 PROJ_NAME_PREFIX="gck-"
+NEXUS_URL=""
 
 #================== Functions ==================
 
@@ -30,10 +33,13 @@ function printCmdUsage(){
     echo "-n                  Required. Project name where the gogs and jenkins container located"
     echo "-gu                 Required. Gogs username to initialize the repository for the demo. "
     echo "-gp                 Required. Gogs password. "
+    echo "-e                  Required. Email id for Gogs user."
     echo "-ju                 Required. Jenkins username. This is in the format of something like this: demouser-admin-edit-view"
     echo "-jt                 Required. Jenkins token."
     echo "-d                  Required. The OCP domain name. e.g. apps.ocp.demo.com" 
+    echo "-nd                 Required. The Nexus public accessible URL. e.g. http://nexus3-project.apps.ocp.demo.com" 
     echo "-np                 Optional. Default: $PROJ_NAME_PREFIX. Project name prefix is required to update the Jenkinfiles settings."
+    echo "-nc                 Required. Decision Central project name."
     echo "-logout             Optional. Default: $LOGOUT_WHEN_DONE. Set to true to logout oc connection after the completion."
     echo
 }
@@ -69,10 +75,13 @@ function printVariables(){
     echo "Master Node URL: $MASTER_NODE_URL"
     echo "Gogs username: $GOGSUSER"
     echo "Gogs password: ******** "
+    echo "Gogs user email id: $GOGSEMAIL"
     echo "Jenkins username: $JENKINS_USERNAME"
     echo "Jenkins token: $JENKINS_TOKEN"
     echo "OCP Domain Name: $DOMAIN_NAME"
     echo "Project Name Prefix: $PROJ_NAME_PREFIX"
+    echo "Decision Central Project Name: $DECISIONCENTRAL_PROJECTNAME"
+    echo "Nexus URL: $NEXUS_URL"
     echo "Logout oc after completion: $LOGOUT_WHEN_DONE"
     echo
 }
@@ -120,7 +129,16 @@ function processArguments(){
         DOMAIN_NAME="$1"      
       elif [ "$1" == "-np" ]; then
         shift
-        PROJ_NAME_PREFIX="$1"      
+        PROJ_NAME_PREFIX="$1"    
+      elif [ "$1" == "-nd" ]; then
+        shift
+        NEXUS_URL="$1"
+      elif [ "$1" == "-e" ]; then
+        shift
+        GOGSEMAIL="$1"  
+      elif [ "$1" == "-dc" ]; then
+        shift
+        DECISIONCENTRAL_PROJECTNAME="$1"    
       else
         echo "Unknown argument: $1"
         printCmdUsage
@@ -140,13 +158,22 @@ function processArguments(){
         exit 0        
     elif [ "$PROJECTNAME" = "" ]; then
         echo "Missing -n argument. Project name is required."
-        exit 0            
+        exit 0     
+    elif [ "$DECISIONCENTRAL_PROJECTNAME" = "" ]; then
+        echo "Missing -dc argument. Decision Central project name is required."
+        exit 0         
     elif [ "$GOGSUSER" = "" ]; then
         echo "Missing -gu argument. Gogs username is required."
         exit 0            
     elif [ "$GOGSPASSWORD" = "" ]; then
         echo "Missing -gp argument. Gogs password is required."
+        exit 0        
+    elif [ "$GOGSEMAIL" = "" ]; then
+        echo "Missing -e argument. Gogs user email id is required."
         exit 0            
+    elif [ "$NEXUS_URL" = "" ]; then
+        echo "Missing -nd argument. Nexus URL is required."
+        exit 0        
     elif [ "$DOMAIN_NAME" = "" ]; then
         echo "Missing -d argument. OCP Domain name is required."
         exit 0                
@@ -219,12 +246,17 @@ if [ "$GOGS_ROUTE_NAME" != "" ]; then
         git clone http://${GOGS_HOSTNAME}/${GOGSUSER}/travel-insurance-rules.git 
         cd travel-insurance-rules
         sed -i -e "s/def projectNamePrefix = \"\"/def projectNamePrefix = \"${PROJ_NAME_PREFIX}\"/g" ./Jenkinsfile
+        sed -i -e "s/http:\/\/nexus3:8081/${NEXUS_URL}/g" ./Jenkinsfile
         echo "---> Push bare codes as mirror to gogs ..."
         git add .
         git commit -m "Updated Jenkinsfile"
         git push http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/${GOGSUSER}/travel-insurance-rules.git 
         cd ..
         rm -rf travel-insurance-rules
+        echo "---> Generating ssh keys ..."
+        echo -e 'y/n' | ssh-keygen -t rsa -C "$GOGSEMAIL" -N "" -f /tmp/id_rsa
+        ID_RSA_PUB=$(</tmp/id_rsa.pub)
+        curl -v -X POST -H "content-type: application/json" -d "{'title':'rhdm','key':'${ID_RSA_PUB}'}" http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/api/v1/admin/users/demo3/keys
     else
         echo
         echo "---> Gogs hostname is not valid... hostname: ${GOGS_HOSTNAME}"
@@ -237,6 +269,34 @@ else
 fi
 
 
+#================== Patching Decision Central ==================
+
+echo "---> Checking if Decision Central POD is ready..."
+echo
+DC_POD_NAME="$(oc get pods --no-headers -o custom-columns=NAME:.metadata.name -n $DECISIONCENTRAL_PROJECTNAME | grep rhdmcentr )"
+
+while [ "$DC_POD_READY" = "false" ]
+do
+   sleep 5
+   DC_POD_READY="$(oc get pod ${DC_POD_NAME} -o custom-columns=Ready:status.containerStatuses[0].ready --no-headers -n $DECISIONCENTRAL_PROJECTNAME)"
+   echo "POD: $DC_POD_NAME, ready: $DC_POD_READY ..."
+done 
+
+echo "---> Populating Decision Central with proper ssh config and keys..."
+GOGS_SSH_HOSTNAME="gogs-ssh.$PROJECTNAME.svc.cluster.local"
+cp ../templates/config /tmp/config
+sed -i -e "s/gogs-ssh.mydm-tools.svc.cluster.local/${GOGS_SSH_HOSTNAME}/g" /tmp/config
+sed -i -e "s/User demo2/User ${GOGSUSER}/g" /tmp/config
+oc cp /tmp/config $DECISIONCENTRAL_PROJECTNAME/$DC_POD_NAME:/home/jboss/.ssh/
+oc exec $DC_POD_NAME chmod 644 /home/jboss/.ssh/config -n $DECISIONCENTRAL_PROJECTNAME
+oc cp /tmp/id_rsa $DECISIONCENTRAL_PROJECTNAME/$DC_POD_NAME:/home/jboss/.ssh/
+oc exec $DC_POD_NAME chmod 600 /home/jboss/.ssh/config -n $DECISIONCENTRAL_PROJECTNAME
+oc exec $DC_POD_NAME touch /home/jboss/.ssh/known_hosts -n $DECISIONCENTRAL_PROJECTNAME
+oc exec $DC_POD_NAME chmod 644 /home/jboss/.ssh/known_hosts -n $DECISIONCENTRAL_PROJECTNAME
+
+oc exec $DC_POD_NAME mkdir /opt/eap/standalone/data/kie/hooks -n $DECISIONCENTRAL_PROJECTNAME
+oc cp ../templates/post-commit $DECISIONCENTRAL_PROJECTNAME/$DC_POD_NAME:/opt/eap/standalone/data/kie/hooks/
+oc exec $DC_POD_NAME chmod 755 /opt/eap/standalone/data/kie/hooks/post-commit -n $DECISIONCENTRAL_PROJECTNAME
 
 #================== Creating Jobs in Jenkins ==================
 

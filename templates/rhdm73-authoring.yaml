@@ -567,6 +567,8 @@ objects:
             readOnly: true
           - name: "${APPLICATION_NAME}-rhdmcentr-pvol"
             mountPath: "/opt/eap/standalone/data/kie"
+          - name: "${APPLICATION_NAME}-rhdmcentr-ssh-home-volume"
+            mountPath: /home/jboss/.ssh
           livenessProbe:
             exec:
               command:
@@ -717,6 +719,9 @@ objects:
         - name: "${APPLICATION_NAME}-rhdmcentr-pvol"
           persistentVolumeClaim:
             claimName: "${APPLICATION_NAME}-rhdmcentr-claim"
+        - name: ${APPLICATION_NAME}-rhdmcentr-ssh-home-volume
+          persistentVolumeClaim:
+            claimName: ${APPLICATION_NAME}-rhdmcentr-ssh-home-claim    
 - kind: DeploymentConfig
   apiVersion: v1
   metadata:
@@ -944,3 +949,16 @@ objects:
     resources:
       requests:
         storage: "${DECISION_CENTRAL_VOLUME_CAPACITY}"
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: ${APPLICATION_NAME}-rhdmcentr-ssh-claim
+    labels:
+      application: ${APPLICATION_NAME}
+      service: ${APPLICATION_NAME}-rhdmcentr
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi

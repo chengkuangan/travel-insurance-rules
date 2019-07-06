@@ -8,6 +8,7 @@
 node('maven') {
 
   def mvnCmd = "mvn -s ./openshift-nexus-settings.xml"
+  // Need to use the public domain name instead of the internal service name, else server host not found error will appear. Suspect if I have multiple Nexus deployed into different projects on a share environment.
   def nexusReleaseURL = "http://nexus3:8081/repository/releases"
   def mavenRepoURL = "http://nexus3:8081/repository/maven-all-public/"
   def projectNamePrefix = ""
@@ -34,7 +35,7 @@ node('maven') {
     // https://issues.apache.org/jira/browse/MDEPLOY-244?focusedCommentId=16648217&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-16648217
     // https://support.sonatype.com/hc/en-us/articles/360010223594-maven-deploy-plugin-version-3-0-0-M1-deploy-fails-with-401-ReasonPhrase-Unauthorized
     // sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::${nexusReleaseURL}"
-    sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::${nexusReleaseURL}"
+    sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::${nexusReleaseURL}"
     echo "Generated jar file: ${packageName}"
   }
 
@@ -56,7 +57,7 @@ node('maven') {
         sh "oc create secret generic kieserver-app-secret --from-file=./keystore.jks -n ${projectName_SIT}"
       }
       echo "Deploying Decision Server into OCP ..."
-      sh "oc new-app -f ./templates/rhdm73-kieserver.yaml -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p APPLICATION_NAME=travel-insurance-rules -p KIE_SERVER_HTTPS_PASSWORD=${kieserver_keystore_password} -p KIE_SERVER_CONTAINER_DEPLOYMENT=tinsurance-rules=com.myspace:insurance-rules-demo:1.0.0 -p KIE_SERVER_MODE=DEVELOPMENT -p KIE_SERVER_MGMT_DISABLED=true -p KIE_SERVER_STARTUP_STRATEGY=LocalContainersStartupStrategy -p MAVEN_REPO_URL=http://nexus3:8081/repository/releases -p MAVEN_REPO_USERNAME=admin -p MAVEN_REPO_PASSWORD=admin123 -n ${projectName_SIT}"
+      sh "oc new-app -f ./templates/rhdm73-kieserver.yaml -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p APPLICATION_NAME=travel-insurance-rules -p KIE_SERVER_HTTPS_PASSWORD=${kieserver_keystore_password} -p KIE_SERVER_CONTAINER_DEPLOYMENT=tinsurance-rules=com.myspace:insurance-rules-demo:1.0.0 -p KIE_SERVER_MODE=DEVELOPMENT -p KIE_SERVER_MGMT_DISABLED=true -p KIE_SERVER_STARTUP_STRATEGY=LocalContainersStartupStrategy -p MAVEN_REPO_URL=${$nexusReleaseURL} -p MAVEN_REPO_USERNAME=admin -p MAVEN_REPO_PASSWORD=admin123 -n ${projectName_SIT}"
     }
     else{
       echo "Rollout POD to have the container to use the lastest build jar from nexus repo..."
