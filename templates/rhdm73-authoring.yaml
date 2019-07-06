@@ -952,7 +952,7 @@ objects:
 - apiVersion: v1
   kind: PersistentVolumeClaim
   metadata:
-    name: ${APPLICATION_NAME}-rhdmcentr-ssh-claim
+    name: ${APPLICATION_NAME}-rhdmcentr-ssh-home-claim
     labels:
       application: ${APPLICATION_NAME}
       service: ${APPLICATION_NAME}-rhdmcentr
