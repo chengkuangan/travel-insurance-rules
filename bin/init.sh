@@ -285,6 +285,7 @@ echo
 #oc create secret generic decisioncentral-app-secret --from-file=./dev_keystore.jks -n $PROJ_DM_DEV_NAME
 oc create secret generic kieserver-app-secret --from-file=/tmp/keystore.jks -n $PROJ_DM_DEV_NAME
 oc create secret generic decisioncentral-app-secret --from-file=/tmp/keystore.jks -n $PROJ_DM_DEV_NAME
+rm -f /tmp/keystore.jks
 echo
 echo "---> Deploying Decision Central and Decision Server into DEV $PROJ_DM_DEV_NAME..."
 echo
