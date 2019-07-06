@@ -256,7 +256,7 @@ if [ "$GOGS_ROUTE_NAME" != "" ]; then
         echo "---> Generating ssh keys ..."
         echo -e 'y/n' | ssh-keygen -t rsa -C "$GOGSEMAIL" -N "" -f /tmp/id_rsa
         ID_RSA_PUB=$(</tmp/id_rsa.pub)
-        curl -v -X POST -H "content-type: application/json" -d "{'title':'rhdm','key':'${ID_RSA_PUB}'}" "http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/api/v1/admin/users/demo3/keys"
+        curl -v -X POST -H "content-type: application/json" -d "{'title':'rhdm','key':'${ID_RSA_PUB}'}" 'http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/api/v1/admin/users/demo3/keys'
     else
         echo
         echo "---> Gogs hostname is not valid... hostname: ${GOGS_HOSTNAME}"
