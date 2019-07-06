@@ -277,18 +277,18 @@ echo
 echo "---> Generating keystore.jks ..."
 echo
 #keytool -genkeypair -alias jboss -keyalg RSA -keystore ./dev_keystore.jks -storepass mykeystorepasss --dname 'CN=demo1,OU=Demo,O=ocp.demo.com,L=KL,S=KL,C=MY'
-keytool -genkeypair -alias jboss -keyalg RSA -keystore ./keystore.jks -storepass $KIESERVER_KEYSTORE_PASSWORD --dname 'CN=demo1,OU=Demo,O=ocp.demo.com,L=KL,S=KL,C=MY'
+keytool -genkeypair -alias jboss -keyalg RSA -keystore /tmp/keystore.jks -storepass $KIESERVER_KEYSTORE_PASSWORD --dname 'CN=demo1,OU=Demo,O=ocp.demo.com,L=KL,S=KL,C=MY'
 echo
 echo "---> Creating kieserver-app-secret..."
 echo
 #oc create secret generic kieserver-app-secret --from-file=./dev_keystore.jks -n $PROJ_DM_DEV_NAME
 #oc create secret generic decisioncentral-app-secret --from-file=./dev_keystore.jks -n $PROJ_DM_DEV_NAME
-oc create secret generic kieserver-app-secret --from-file=./keystore.jks -n $PROJ_DM_DEV_NAME
-oc create secret generic decisioncentral-app-secret --from-file=./keystore.jks -n $PROJ_DM_DEV_NAME
+oc create secret generic kieserver-app-secret --from-file=/tmp/keystore.jks -n $PROJ_DM_DEV_NAME
+oc create secret generic decisioncentral-app-secret --from-file=/tmp/keystore.jks -n $PROJ_DM_DEV_NAME
 echo
 echo "---> Deploying Decision Central and Decision Server into DEV $PROJ_DM_DEV_NAME..."
 echo
-oc new-app -f ../templates/rhdm73-authoring.yaml -p DECISION_CENTRAL_HTTPS_SECRET=decisioncentral-app-secret -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p DECISION_CENTRAL_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p KIE_SERVER_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p APPLICATION_NAME=dmanager -n $PROJ_DM_DEV_NAME -p IMAGE_STREAM_TAG=$DM_IMAGE_STREAM_TAG
+oc new-app -f https://raw.githubusercontent.com/chengkuangan/travel-insurance-rules/master/templates/rhdm73-authoring.yaml -p DECISION_CENTRAL_HTTPS_SECRET=decisioncentral-app-secret -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p DECISION_CENTRAL_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p KIE_SERVER_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p APPLICATION_NAME=dmanager -n $PROJ_DM_DEV_NAME -p IMAGE_STREAM_TAG=$DM_IMAGE_STREAM_TAG
 
 # --- Patching Decision Central
 
