@@ -289,7 +289,7 @@ rm -f /tmp/keystore.jks
 echo
 echo "---> Deploying Decision Central and Decision Server into DEV $PROJ_DM_DEV_NAME..."
 echo
-oc new-app -f https://raw.githubusercontent.com/chengkuangan/travel-insurance-rules/master/templates/rhdm73-authoring.yaml -p DECISION_CENTRAL_HTTPS_SECRET=decisioncentral-app-secret -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p DECISION_CENTRAL_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p KIE_SERVER_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p APPLICATION_NAME=dmanager -n $PROJ_DM_DEV_NAME -p IMAGE_STREAM_TAG=$DM_IMAGE_STREAM_TAG
+oc new-app -f https://raw.githubusercontent.com/chengkuangan/travel-insurance-rules/master/templates/rhdm73-authoring.yaml -p DECISION_CENTRAL_HTTPS_SECRET=decisioncentral-app-secret -p KIE_SERVER_HTTPS_SECRET=kieserver-app-secret -p DECISION_CENTRAL_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p KIE_SERVER_HTTPS_PASSWORD=$KIESERVER_KEYSTORE_PASSWORD -p APPLICATION_NAME=dmanager -p IMAGE_STREAM_TAG=$DM_IMAGE_STREAM_TAG -p GIT_HOOKS_DIR=/opt/eap/standalone/data/kie/hooks -n $PROJ_DM_DEV_NAME
 
 # --- Patching Decision Central
 

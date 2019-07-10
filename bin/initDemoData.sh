@@ -19,7 +19,6 @@ DOMAIN_NAME=""
 JENKINS_USERNAME=""
 JENKINS_TOKEN=""
 PROJ_NAME_PREFIX="gck-"
-NEXUS_URL=""
 
 #================== Functions ==================
 
@@ -37,7 +36,6 @@ function printCmdUsage(){
     echo "-ju                 Required. Jenkins username. This is in the format of something like this: demouser-admin-edit-view"
     echo "-jt                 Required. Jenkins token."
     echo "-d                  Required. The OCP domain name. e.g. apps.ocp.demo.com" 
-    echo "-nd                 Required. The Nexus public accessible URL. e.g. http://nexus3-project.apps.ocp.demo.com" 
     echo "-np                 Optional. Default: $PROJ_NAME_PREFIX. Project name prefix is required to update the Jenkinfiles settings."
     echo "-nc                 Required. Decision Central project name."
     echo "-logout             Optional. Default: $LOGOUT_WHEN_DONE. Set to true to logout oc connection after the completion."
@@ -81,7 +79,6 @@ function printVariables(){
     echo "OCP Domain Name: $DOMAIN_NAME"
     echo "Project Name Prefix: $PROJ_NAME_PREFIX"
     echo "Decision Central Project Name: $DECISIONCENTRAL_PROJECTNAME"
-    echo "Nexus URL: $NEXUS_URL"
     echo "Logout oc after completion: $LOGOUT_WHEN_DONE"
     echo
 }
@@ -171,9 +168,6 @@ function processArguments(){
     elif [ "$GOGSEMAIL" = "" ]; then
         echo "Missing -e argument. Gogs user email id is required."
         exit 0            
-    elif [ "$NEXUS_URL" = "" ]; then
-        echo "Missing -nd argument. Nexus URL is required."
-        exit 0        
     elif [ "$DOMAIN_NAME" = "" ]; then
         echo "Missing -d argument. OCP Domain name is required."
         exit 0                
@@ -226,17 +220,17 @@ if [ "$GOGS_ROUTE_NAME" != "" ]; then
         echo
         echo "---> Creating gogs token ..."
         echo
-        curl  -X POST -H "content-type: application/json" -d '{"name":"sample-token","sha1":"8a4fc41b4868aecdd623b10cb1b64a36c6ee51f3"}' http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/api/v1/users/${GOGSUSER}/tokens
+        curl  -X POST -H "content-type: application/json" -d '{"name":"sample-token","sha1":"8a4fc41b4868aecdd623b10cb1b64a36c6ee51f3"}' 'http://'"${GOGSUSER}"':'"${GOGSPASSWORD}"'@'"${GOGS_HOSTNAME}"'/api/v1/users/${GOGSUSER}/tokens'
         echo
         echo
         echo "---> Creating repository ..."
         echo
-        curl -H "Content-Type: application/json" -d '{"name": "travel-insurance-rules", "description": "Travel Insurance Rules Demo", "private": false}' -X POST http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/api/v1/user/repos?token=8a4fc41b4868aecdd623b10cb1b64a36c6ee51f3
+        curl -H "Content-Type: application/json" -d '{"name": "travel-insurance-rules", "description": "Travel Insurance Rules Demo", "private": false}' -X POST 'http://'"${GOGSUSER}"':'"${GOGSPASSWORD}"'@'"${GOGS_HOSTNAME}"'/api/v1/user/repos?token=8a4fc41b4868aecdd623b10cb1b64a36c6ee51f3'
         echo
         echo
         echo "---> Push bare codes as mirror to gogs ..."
         echo
-        git push --mirror http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/${GOGSUSER}/travel-insurance-rules.git 
+        git push --mirror 'http://'"${GOGSUSER}"':'"${GOGSPASSWORD}"'@'"${GOGS_HOSTNAME}"'/'"${GOGSUSER}"'/travel-insurance-rules.git'
         cd ..
         rm -rf travel-insurance-rules.git
         echo
@@ -246,17 +240,18 @@ if [ "$GOGS_ROUTE_NAME" != "" ]; then
         git clone http://${GOGS_HOSTNAME}/${GOGSUSER}/travel-insurance-rules.git 
         cd travel-insurance-rules
         sed -i -e "s/def projectNamePrefix = \"\"/def projectNamePrefix = \"${PROJ_NAME_PREFIX}\"/g" ./Jenkinsfile
-        sed -i -e "s/http:\/\/nexus3:8081/${NEXUS_URL}/g" ./Jenkinsfile
+        sed -i -e "s/http:\/\/nexus3.demo1-tools.svc.cluster.local/nexus3.${PROJECTNAME}.svc.cluster.local/g" ./Jenkinsfile
+        sed -i -e "s/http:\/\/nexus3.demo1-tools.svc.cluster.local/nexus3.${PROJECTNAME}.svc.cluster.local/g" ./openshift-nexus-settings.xml
         echo "---> Push bare codes as mirror to gogs ..."
         git add .
         git commit -m "Updated Jenkinsfile"
-        git push http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/${GOGSUSER}/travel-insurance-rules.git 
+        git push 'http://'"${GOGSUSER}"':'"${GOGSPASSWORD}"'@'"${GOGS_HOSTNAME}"'/${GOGSUSER}/travel-insurance-rules.git'
         cd ..
         rm -rf travel-insurance-rules
         echo "---> Generating ssh keys ..."
         echo -e 'y/n' | ssh-keygen -t rsa -C "$GOGSEMAIL" -N "" -f /tmp/id_rsa
         ID_RSA_PUB=$(</tmp/id_rsa.pub)
-        curl -v -X POST -H "content-type: application/json" -d "{'title':'rhdm','key':'${ID_RSA_PUB}'}" 'http://${GOGSUSER}:${GOGSPASSWORD}@${GOGS_HOSTNAME}/api/v1/admin/users/demo3/keys'
+        curl -v -X POST -H "content-type: application/json" -d "{'title':'rhdm','key':'${ID_RSA_PUB}'}" 'http://'"${GOGSUSER}"':'"${GOGSPASSWORD}"'@'"${GOGS_HOSTNAME}"'/api/v1/admin/users/demo3/keys'
     else
         echo
         echo "---> Gogs hostname is not valid... hostname: ${GOGS_HOSTNAME}"
@@ -291,7 +286,7 @@ sed -i -e "s/User demo2/User ${GOGSUSER}/g" /tmp/config
 oc cp /tmp/config $DECISIONCENTRAL_PROJECTNAME/$DC_POD_NAME:/home/jboss/.ssh/
 oc exec $DC_POD_NAME chmod 644 /home/jboss/.ssh/config -n $DECISIONCENTRAL_PROJECTNAME
 oc cp /tmp/id_rsa $DECISIONCENTRAL_PROJECTNAME/$DC_POD_NAME:/home/jboss/.ssh/
-oc exec $DC_POD_NAME chmod 600 /home/jboss/.ssh/config -n $DECISIONCENTRAL_PROJECTNAME
+oc exec $DC_POD_NAME chmod 600 /home/jboss/.ssh/id_rsa -n $DECISIONCENTRAL_PROJECTNAME
 oc exec $DC_POD_NAME touch /home/jboss/.ssh/known_hosts -n $DECISIONCENTRAL_PROJECTNAME
 oc exec $DC_POD_NAME chmod 644 /home/jboss/.ssh/known_hosts -n $DECISIONCENTRAL_PROJECTNAME
 
