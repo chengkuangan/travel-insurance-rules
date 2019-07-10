@@ -8,9 +8,11 @@ kjar. Stores the kjar into Nexus, and then deploy a KIE Server into SIT Environm
 To setup the demo, clone this project to local directory. Navigate to the bin folder, and run the following scripts:
 
 - Provision the required Openshift environments and containers for this demo.
+
 ./init.sh
 
 - Initilize the required demo data
+
 ./initDemoData.sh 
 
 Note:
