@@ -14,7 +14,7 @@ To setup the demo, clone this project to local directory. Navigate to the bin fo
 
 ./initDemoData.sh 
 
-##Note:
+## Note:
 
 1. Change the script to executable if it is not.
 2. run ./init.sh -h and ./initDemoData.sh -h for more help on how to use the scritps.
