@@ -227,25 +227,6 @@ echo
 oc new-project $PROJ_TOOLS_NAME --display-name="$PROJ_TOOLS_DESC"
 oc new-project $PROJ_DM_SIT_NAME --display-name="$PROJ_DM_SIT_DESC"
 oc new-project $PROJ_DM_DEV_NAME --display-name="$PROJ_DM_DEV_DESC"
-
-
-echo
-echo "---> Adding all necessary users and system accounts permissions..."
-echo
-
-oc create role RoleBindingRbacCreate --verb=create --resource=rolebindings.rbac.authorization.k8s.io -n $PROJ_DM_SIT_NAME
-oc create role RoleBindingCreate --verb=create --resource=rolebindings.authorization.openshift.io -n $PROJ_DM_SIT_NAME
-oc create role RoleBindingRbacCreate --verb=create --resource=rolebindings.rbac.authorization.k8s.io -n $PROJ_DM_DEV_NAME
-oc create role RoleBindingCreate --verb=create --resource=rolebindings.authorization.openshift.io -n $PROJ_DM_DEV_NAME
-
-oc policy add-role-to-user edit system:serviceaccount:$PROJ_TOOLS_NAME:jenkins -n $PROJ_DM_SIT_NAME
-oc policy add-role-to-user edit system:serviceaccount:$PROJ_TOOLS_NAME:jenkins -n $PROJ_DM_DEV_NAME
-oc adm policy add-role-to-user RoleBindingRbacCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_SIT_NAME -n $PROJ_DM_SIT_NAME
-oc adm policy add-role-to-user RoleBindingCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_SIT_NAME -n $PROJ_DM_SIT_NAME
-oc adm policy add-role-to-user RoleBindingRbacCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_DEV_NAME -n $PROJ_DM_DEV_NAME
-oc adm policy add-role-to-user RoleBindingCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_DEV_NAME -n $PROJ_DM_DEV_NAME
-
-#oc policy add-role-to-user system:image-puller system:serviceaccount:$PROJ_DM_NAME:default -n $PROJ_DM_NAME
     
 #================== Deploy Gogs ==================
 
@@ -270,6 +251,17 @@ echo
 echo "---> Provisioning Jenkins now..."
 echo
 oc new-app jenkins-persistent -n $PROJ_TOOLS_NAME
+
+echo
+echo "---> Adding all necessary users and system accounts permissions for Jenkins..."
+echo
+
+oc create role RoleBindingRbacCreate --verb=create --resource=rolebindings.rbac.authorization.k8s.io -n $PROJ_DM_SIT_NAME
+oc create role RoleBindingCreate --verb=create --resource=rolebindings.authorization.openshift.io -n $PROJ_DM_SIT_NAME
+oc policy add-role-to-user edit system:serviceaccount:$PROJ_TOOLS_NAME:jenkins -n $PROJ_DM_SIT_NAME
+oc adm policy add-role-to-user RoleBindingRbacCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_SIT_NAME -n $PROJ_DM_SIT_NAME
+oc adm policy add-role-to-user RoleBindingCreate system:serviceaccount:$PROJ_TOOLS_NAME:jenkins --role-namespace=$PROJ_DM_SIT_NAME -n $PROJ_DM_SIT_NAME
+
 
 #================== Deploy Decision Central and Decision Servers into Dev Environment ==================
 
