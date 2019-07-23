@@ -14,6 +14,10 @@ To setup the demo, clone this project to local directory. Navigate to the bin fo
 
 ./initDemoData.sh 
 
+You may refer to the following article for more explanation
+
+https://developers.redhat.com/blog/2019/07/22/enabling-ci-cd-for-red-hat-decision-manager-on-openshift/
+
 ## Note:
 
 1. Change the script to executable if it is not.
